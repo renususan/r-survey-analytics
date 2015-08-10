@@ -1,0 +1,769 @@
+
+---
+title: "Final Project"
+author: "Renu Thomas"
+date: 'March 2nd, 2015'
+output: html_document
+---
+
+
+
+```{r ,echo=FALSE ,message=FALSE}
+
+options(warn=-1)
+options(keep.comment = FALSE) 
+# Import data sets
+
+nlsy <- read.csv("http://www.andrew.cmu.edu/user/achoulde/94842/final_project/nlsy79_base/nlsy79_base.csv", header=TRUE,stringsAsFactors = FALSE)
+
+```
+
+```{r,echo=FALSE,message=FALSE}
+# Data preparation
+
+
+# Change column names to question name abbreviations 
+var.names <- c("father.age.death", "mother.age.death", "case.ID", "race", "sex", "family.poverty.status.1978", "age.stopped.police", "illegal.charged", "times.charged.illegal", "age.charged.illegal", "adult.court.booked", "class.worker.1983", "family.poverty.1987", "class.worker.1989", "family.worth.1989",  "class.worker.1993", "times.cocaine.used", "times.crack.used", "personal.total.income.1999", "family.total.income.1999", "class.worker.2003", "personal.total.income.2003", "family.worth.2003", "family.total.income.2003", "number.spouses.2004", "age.first.marriage", "number.spouses.2008", "family.worth.2008", "business.type", "class.worker.2012", "number.children", "personal.total.income.2012", "family.total.income.2012", "marital.status", "number.jobs","reason.left.school","highest.grade.completed","enrollment.status.1979","highest.grade.attended","highest.grade.completed.1989","enrollment.status.1989")
+
+#change column names
+colnames(nlsy) <- var.names
+
+```
+
+
+```{r ,echo=FALSE,message=FALSE,warning=FALSE}
+library(ggplot2)
+library(plyr) 
+library(xlsx)
+library(knitr)
+library(lattice)
+library(ggplot2)
+library(reshape2)
+library(plotrix)
+```
+
+
+```{r ,echo=FALSE,message=FALSE,warning=FALSE}
+#Data Cleaning/Preparation
+# based on intuition selecting the seemingly relevant variables
+# libraries
+ 
+
+nlsy.required.untidy <- subset(nlsy, select=c("race", "sex","illegal.charged","times.charged.illegal","adult.court.booked","times.cocaine.used","times.crack.used","age.first.marriage","number.spouses.2008","number.children","business.type","marital.status","number.jobs","highest.grade.completed","class.worker.2012","personal.total.income.2012","family.total.income.2012"))
+
+
+nlsy.clean <- transform(nlsy.required.untidy, race = as.factor(mapvalues(race, c("1", "2", "3"), c("Hispanic","Black","Other"))))
+
+
+
+
+nlsy.clean <- transform(nlsy.clean , sex = as.factor(mapvalues(sex, c("1", "2"), c("Male","Female"))))
+
+
+nlsy.clean <- transform(nlsy.clean , illegal.charged = as.factor(mapvalues(illegal.charged, c("1", "0","-5","-4","-3","-2","-1"), c("Yes","No","Did Not Participate","Valid Skip","Incorrectly Skipped","Don't Know","Refused"))))
+
+
+#nlsy.clean <- nlsy.clean[!(nlsy.clean$illegal.charged == -3), ]
+
+nlsy.clean <- transform(nlsy.clean , adult.court.booked = as.factor(mapvalues(adult.court.booked, c("1", "0","-4","-5","-3","-2","-1"), c("Yes","No","Valid Skip","Did Not Participate","Incorrectly Skip","Don't Know","Refused"))))
+
+#nlsy.clean <- nlsy.clean[!(nlsy.clean$adult.court.booked == -3), ]
+
+nlsy.clean <- transform(nlsy.clean , times.cocaine.used = as.factor(mapvalues(times.cocaine.used, c("6", "5","4","3","2","1","0","-5","-1","-4","-3","-2"), c(">=100","50-99","11-49","6-10","3-5","1-2","Never","Did Not Participate","Refused","Valid Skip","Incorrectly Skip","Don't Know"))))
+
+
+#nlsy.clean <- nlsy.clean[!(nlsy.clean$times.cocaine.used == -4|nlsy.clean$times.cocaine.used == -2), ]
+
+
+nlsy.clean <- transform(nlsy.clean , times.crack.used = as.factor(mapvalues(times.crack.used, c("6", "5","4","3","2","1","0","-5","-1","-4","-2","-3"), c(">=100","50-99","11-49","6-10","3-5","1-2","Never","Did Not Participate","Refused","Valid Skip","Don't Know","Incorrectly Skipped"))))
+#nlsy.clean <- nlsy.clean[!(nlsy.clean$times.crack.used == -4|nlsy.clean$times.crack.used == -2), ]
+
+
+nlsy.clean <- transform(nlsy.clean , age.first.marriage = as.factor(mapvalues(age.first.marriage, c("-999","-3","-1","-2","-5","-4"), c("Never Married","Incorrectly Skipped","Valid Skip","Don't Know","Did Not Participate","Valid Skip"))))
+#nlsy.clean <- nlsy.clean[!(nlsy.clean$age.first.marriage == -1|nlsy.clean$age.first.marriage == -2), ]
+
+
+#nlsy.clean <- transform(nlsy.clean , number.spouses.2008 = (mapvalues(number.spouses.2008, c("-4","-5","-3","-2","-1"), c("Valid Skip","Did Not Participate","Incorrectly Skipped","Don't Know","Refused"))))
+nlsy.clean <- nlsy.clean[!(nlsy.clean$number.spouses.2008 == "-4"), ]
+
+nlsy.clean <- transform(nlsy.clean , number.children = as.factor(mapvalues(number.children, c("-4","-5","-3","-2","-1"), c("Valid Skip","Did Not Participate","Incorrectly Skipped","Don't Know","Refused"))))
+
+
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(170:290), "Agriculture/Forestry/Fishing/Hunting",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(370:490), "Mining",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(570:690), "Utilities",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(770), "Construction",business.type))
+
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(1070:3990), "Manufacturing",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(4070:4590), "Wholesale Trade",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(4670:5790), "Retail Trade",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(6070:6390), "Transportation/Warehousing",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(6470:6780), "Information",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(6870:6990), "Finance & Insurance",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(7070:7190), "Real Estate/Rental/Leasing",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(7270:7490), "Professional/Scientific/Technical Services",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(7570:7790), "Management/Admin & Support/Waste Management",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(7860:7890), "Educational Services",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(7970:8470), "Healthcare/Social Assistance",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(8560:8590), "Arts/Entertainment/Recreation",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(8660:8690), "Accomodation/Food Services",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(8770:9290), "Other Services",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(9370:9870), "Public Admin/Military",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(9890), "Armed Forces",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(9950), "Not in Labor Force",business.type))
+
+nlsy.clean <- transform(nlsy.clean, business.type = ifelse(business.type %in% c(9990), "Uncodeable",business.type))
+
+nlsy.clean <- transform(nlsy.clean , business.type = as.factor(mapvalues(business.type, c("-4","-5","-3","-2","-1"), c("Valid Skip","Did Not Participate","Incorrectly Skipped","Don't Know","Refused"))))
+
+
+nlsy.clean <- transform(nlsy.clean , marital.status = as.factor(mapvalues(marital.status, c("1","2","3","-5","-4","-3","-2","-1"), c("Never Married","Married,Spouse present","Other","Did Not Participate","Valid Skip","Incorrectly Skipped","Don't Know","Refused"))))
+
+#nlsy.clean <- nlsy.clean[!(nlsy.clean$marital.status == -1|nlsy.clean$marital.status == -2), ]
+
+#nlsy.clean <- transform(nlsy.clean , number.jobs = (mapvalues(number.jobs, c("-5","-4","-3","-2","-1"), c("Did Not Participate","Valid Skip","Incorrectly Skip","Don't Know","Refused"))))
+
+nlsy.clean <- transform(nlsy.clean , highest.grade.completed = as.factor(mapvalues(highest.grade.completed, c("0","1","2","3","4","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","95","-3","-5","-4","-2","-1"), c("None","1","2","3","4","6","7","8","9","10","11","12","1st Year Coll","2nd Year Coll","3rd Year Coll","4th Year Coll","5th Year Coll","6th Year Coll","7th Year Coll","8th Year Coll or >","Ungraded","Incorrectly Skipped","Did Not Participate","Valid Skip","Don't Know","Refused"))))
+
+#nlsy.clean <- nlsy.clean[!(nlsy.clean$highest.grade.completed == -4|nlsy.clean$highest.grade.completed == 5), ]
+
+
+nlsy.clean <- transform(nlsy.clean , class.worker.2012 = as.factor(mapvalues(class.worker.2012, c("1","2","3","4","5","-4","-5","-3","-2","-1"), c("Government","Private for Profit","Non Profit","Self Employed","Family Business","Valid Skip","Did Not Participate","Incorrectly Skipped","Don't know","Refused"))))
+
+
+#nlsy.clean <- nlsy.clean[!(nlsy.clean$class.worker.2012 == -1|nlsy.clean$class.worker.2012== -2), ]
+
+
+#nlsy.clean <- transform(nlsy.clean , personal.total.income.2012 = as.factor(mapvalues(personal.total.income.2012, c("-1","-5"), c("Refused","Did Not Participate"))))
+
+# dont' know category removed , since without the knowlege of their income, no use, think about removing non interview , the income information is not present, so why consider?
+nlsy.clean <- nlsy.clean[!(nlsy.clean$personal.total.income.2012 == -2|nlsy.clean$personal.total.income.2012 == -4|nlsy.clean$personal.total.income.2012 == -3|nlsy.clean$personal.total.income.2012 == -5), ]
+
+
+
+nlsy.clean <- nlsy.clean[!(nlsy.clean$family.total.income.2012 == -2|nlsy.clean$family.total.income.2012 == -5|nlsy.clean$family.total.income.2012 == -4|nlsy.clean$family.total.income.2012 == -1), ]
+
+nlsy.clean <- transform(nlsy.clean , times.charged.illegal = as.factor(mapvalues(times.charged.illegal, c("-5","-4","-3","-2","-1"), c("Did Not Participate","Valid Skip","Incorrectly Skipped","Don't Know","Refused"))))
+
+
+
+#write.xlsx(x = nlsy.clean, file = "C://Users//Renu//Desktop//nlsy.xlsx", sheetName="Sheet1")
+```
+
+
+### 1. Data summary
+The dataset is the NLSY79 (National Longitudinal Survey of Youth, 1979 cohort) data set. The NLSY79 data set contains survey responses of thousands of individuals.
+
+The task is to to find out  the following: 
+
+1. Is there is a signifant difference in income between men and women ?
+
+2. If there is a difference,does it vary depending on factors such as race,education,profession,criminal history,marriage status etc?
+
+From 40 variables, I have chosen to work with 17 variables which are descriptive of the above factors . They are : 
+
+1. race  
+
+2. sex   
+  
+3. illegal.charged            (charged with illegal activity ?)  
+
+4. times.charged.illegal      (number of times charged illegaly?)
+
+5. adult.court.booked         (Booked in an adult court ?)   
+
+6. times.cocaine.used         (Number of times he/she used cocaine)  
+
+7. times.crack.used           (Number of times he/she used crack)  
+
+8. age.first.marriage         (Age at which he/she got married for the first time)  
+
+9. number.spouses.2008        (Number of spouses upto 2008)  
+
+10. number.children            (Number of biological children)  
+
+11. business.type              (Type of business or industry)  
+
+12. marital.status             (Married or not?)  
+
+13. number.jobs                (Number of different jobs as of 2012)  
+
+14. highest.grade.completed    (Highest Grade Completed as of 2008)  
+
+15. class.worker.2012          (Class of worker's job as of 2012)  
+
+16. personal.total.income.2012 (His/Her total of wages and salary in 2012)  
+
+17. family.total.income.2012   (His/Her family's total of wages and salary in 2012)  
+
+Number of rows in the data set before cleaning= `r nrow(nlsy.required.untidy)`.
+After cleaning and data transformation , the number of cases were reduced to `r nrow(nlsy.clean)`. The details of the cleaning process is explained in section 2.
+
+Below is a summary of the cleaned data.
+
+The number of males interviewed = `r nrow(nlsy.clean[which(nlsy.clean$sex=="Male"),])`.
+The number of females interviewed = `r nrow(nlsy.clean[which(nlsy.clean$sex=="Female"),])`
+
+#### Crime Profile
+
+##### Booked in adult court ?
+Among `r length(which(nlsy.clean$sex=="Female"))` females who were surveyed, `r length(which(nlsy.clean$sex=="Female" & nlsy.clean$adult.court.booked=="Yes"))` were booked in adult court.
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+
+female.black <- length(which(nlsy.clean$sex=="Female" & nlsy.clean$adult.court.booked=="Yes" & nlsy.clean$race=="Black"))
+
+female.hispanic <- length(which(nlsy.clean$sex=="Female" & nlsy.clean$adult.court.booked=="Yes" & nlsy.clean$race=="Hispanic"))
+
+female.other <- length(which(nlsy.clean$sex=="Female" & nlsy.clean$adult.court.booked=="Yes" & nlsy.clean$race=="Other"))
+
+slices <- c(female.black, female.hispanic,female.other) 
+pct <- round(slices/sum(slices)*100)
+lbls <- c("Black", "Hispanic", "Other")
+lbls <- paste(lbls, pct) # add percents to labels 
+lbls <- paste(lbls,"%",sep="") # ad % to labels 
+pie(slices,labels=lbls,explode=0.1, main="Proportion of females booked in adult court ")
+
+```
+
+
+Among `r length(which(nlsy.clean$sex=="Male"))` males who were surveyed, `r length(which(nlsy.clean$sex=="Male" & nlsy.clean$adult.court.booked=="Yes"))` were booked in an adult court.
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+
+male.black <- length(which(nlsy.clean$sex=="Males" & nlsy.clean$adult.court.booked=="Yes" & nlsy.clean$race=="Black"))
+
+male.hispanic <- length(which(nlsy.clean$sex=="Male" & nlsy.clean$adult.court.booked=="Yes" & nlsy.clean$race=="Hispanic"))
+
+male.other <- length(which(nlsy.clean$sex=="Male" & nlsy.clean$adult.court.booked=="Yes" & nlsy.clean$race=="Other"))
+
+slices <- c(male.black, male.hispanic,male.other) 
+pct <- round(slices/sum(slices)*100)
+lbls <- c("Black", "Hispanic", "Other")
+lbls <- paste(lbls, pct) # add percents to labels 
+lbls <- paste(lbls,"%",sep="") # ad % to labels 
+pie(slices,labels=lbls,explode=0.1, main="Proportion of males booked in adult court ")
+
+```
+
+The proportion of men who were booked in adult court was higher than that of women. Among both men and women,people belonging to races other than Black or Hispanic, were booked the most.
+
+#### General Summary of other variables
+Below is a summary of few variables in the data set
+```{r ,echo=FALSE}
+
+generateMarSummary <- function() {
+  
+males.married <- length(which(nlsy.clean$marital.status=="Married,Spouse present" & nlsy.clean$sex=="Male"))/length(which   (nlsy.clean$sex=="Male"))  
+
+females.married <- length(which(nlsy.clean$marital.status=="Married,Spouse present" & nlsy.clean$sex=="Female"))/length(which(nlsy.clean$sex=="Female")) 
+
+prop <- c(males.married,females.married)
+list(prop = prop)
+}
+
+
+
+fetchApplicableRows <- function(varname,group){
+if(group=="Male"){
+sub <- nlsy.clean[which(nlsy.clean$sex=="Male"),]
+}
+if(group=="Female"){
+sub <- nlsy.clean[which(nlsy.clean$sex=="Female"),]  
+}
+sub <- sub[[varname]]
+sub <- sub[which(sub!="Did Not Participate")]
+sub <- sub[which(sub!="Don't Know")]
+sub <- sub[which(sub!="Incorrectly Skipped")]
+sub <- sub[which(sub!="Valid Skip")]
+sub <- sub[which(sub!="Refused")]
+sub
+}
+
+
+generateChildrenSummary <- function() {
+  
+subset.males <- fetchApplicableRows("number.children","Male")
+sum.num <- 0
+sum.div <- 0
+
+if(sum.div!=0){
+males.children.mean <- sum.num/sum.div
+}else{
+ males.children.mean <-0 
+}
+
+subset.females <- fetchApplicableRows("number.children","Female")
+sum.num <- 0
+sum.div <- 0
+for (i in unique(subset.females)){
+ sum.num <- sum.num + as.integer(i)*length(which(subset.females==i))
+ sum.div <- sum.div + length(which(subset.females==i))
+}
+females.children.mean <- sum.num/sum.div
+mean <- c(females.children.mean,males.children.mean)
+list(means = mean )
+}
+
+generateJobsSummary <- function() {
+  
+subset.males <- fetchApplicableRows("number.jobs","Male")
+sum.num <- 0
+sum.div <- 0
+for (i in unique(subset.males)){
+ sum.num <- sum.num + as.integer(i)*length(which(subset.males==i))
+ sum.div <- sum.div + length(which(subset.males==i))
+}
+males.jobs.mean <- sum.num/sum.div
+
+
+subset.females <- fetchApplicableRows("number.jobs","Female")
+sum.num <- 0
+sum.div <- 0
+for (i in unique(subset.females)){
+ sum.num <- sum.num + as.integer(i)*length(which(subset.females==i))
+ sum.div <- sum.div + length(which(subset.females==i))
+}
+females.jobs.mean <- sum.num/sum.div
+mean <- c(females.jobs.mean,males.jobs.mean)
+list(means = mean )
+}
+
+generateIllegalActivitySummary <- function() {
+  
+subset.males <- fetchApplicableRows("times.charged.illegal","Male")
+sum.num <- 0
+sum.div <- 0
+for (i in unique(subset.males)){
+ sum.num <- sum.num + as.integer(i)*length(which(subset.males==i))
+ sum.div <- sum.div + length(which(subset.males==i))
+}
+males.illegal.mean <- sum.num/sum.div
+
+
+subset.females <- fetchApplicableRows("times.charged.illegal","Female")
+sum.num <- 0
+sum.div <- 0
+for (i in unique(subset.females)){
+ sum.num <- sum.num + as.integer(i)*length(which(subset.females==i))
+ sum.div <- sum.div + length(which(subset.females==i))
+}
+females.illegal.mean <- sum.num/sum.div
+mean <- c(females.illegal.mean,males.illegal.mean)
+list(means = mean )
+}
+
+
+formatVariableSummary <- function(var.summary,varname) {
+  format.out <- c()
+  if(is.null(var.summary)) return(NULL)
+ 
+  if(varname=="marital.status"){
+  for(prop in var.summary$prop){
+    percent <- paste(round(100 * prop, 1), "%", sep="")
+      format.out <- c(format.out,percent) 
+  }
+ }
+ 
+if(varname=="number.children"|varname=="number.jobs"|varname=="times.charged.illegal")  {
+for(i in 1:length(var.summary$means)) {
+      mean.text <- paste(round(var.summary$means[i], 2), sep="")
+      format.out <- c(format.out, mean.text)
+    }
+}  
+  #format.out <- var.summary$missing
+  
+  c(format.out)
+}
+
+generateDataSummary <- function(dataset, varnames, group.name) {
+  out <- NULL  # Define output variable
+  groups <- dataset[[group.name]]
+  
+  for(varname in varnames) {
+    if(varname=="marital.status"){
+    out <- rbind(out, formatVariableSummary(generateMarSummary(),varname))
+    }
+    if(varname=="number.children"){
+     out <- rbind(out, formatVariableSummary(generateChildrenSummary(),varname)) 
+    }
+    if(varname=="number.jobs"){
+     out <- rbind(out, formatVariableSummary(generateJobsSummary(),varname)) 
+    }
+    if(varname=="times.charged.illegal"){
+     out <- rbind(out, formatVariableSummary(generateIllegalActivitySummary(),varname)) 
+    }
+  }
+  colnames(out) <- c(levels(groups))
+  # Prepend variable names and return summary table
+  variable <- c("Married ?","Average Number of Children","Average Number of jobs"," Average Number of illegal charges")
+  cbind(variable, out)
+  }
+
+#var.names <- c("marital.status", "age.first.marriage","number.children", "number.spouses.2008", "number.jobs","times.illegal.charged")
+var.names <- c("marital.status","number.children","number.jobs","times.charged.illegal")
+
+group.name <- "sex"
+
+kable(generateDataSummary(nlsy.clean, var.names, group.name), format = "markdown")
+```
+
+
+
+### 2. Methodology
+
+#### Dealing with missing values
+The variables I chose to work with for this data set have been listed in the 1st section. Now, I will explain my approach in dealing with missing
+values and truncated data
+
+1.Income in 2012  (personal.total.income.2012)
+  Since the problem to be addressed was regarding differences in income  between men and women. I     
+  removed all records in the original data set that had '-5','-4' or any other codes for missingness.
+  This removed approximately 5662 rows from the original data set of 12,686 rows.
+
+2.Family's income in 2012 (family.total.income.2012)
+  Since the problem to be addressed was regarding differences in income  between men and women. I     
+  removed all records in the original data set that had '-5','-4' or any other codes for missingness.
+  This removed approximately 5662 rows from the original data set of 12,686 rows.
+  
+3.For all other variables the missingness indicators were recoded as follows
+
+  -5 -> Did Not Participate   
+  
+  -4 -> Valid Skip
+  
+  -3 -> Incorrectly Skipped
+  
+  -2 -> Don't Know
+  
+  -1 -> Refused
+
+
+#### Dealing with truncated values ?
+The dataset contains censored data for columns related to income.I hav 2 such variables in my data set. 'personal.total.income.2012' & 'family.total.income.2012' . The top 2% of each of these variables are truncated and replaced with the group's average. The result is that the data will be right-skewed.`r with(nlsy.clean, sum(personal.total.income.2012 == max(personal.total.income.2012)))` of the incomes are truncated at the maximum value of `r max(nlsy.clean$personal.total.income.2012)`.
+
+
+I generated a histogram plot to check this.
+
+```{r ,echo=FALSE}
+hist(nlsy.clean$personal.total.income.2012,main="",xlab="Personal Income 2012")
+```
+
+As seen from the plot, the data is right skewed.
+To perform Hypothesis tests , in order to address the main problem, I ran the hypothesis test 2 ways
+
+1. Including the censored observations
+2. excluding the censored observations  
+
+The histogram plot of the data without the censored observations is shown below.
+The details of the hypothesis tests will be covered in the Findings section.
+
+```{r ,echo=FALSE}
+# gettin data minus the truncated values
+
+nlsy.without.truncated <- nlsy.clean[which(nlsy.clean$personal.total.income.2012!=max(nlsy.clean$personal.total.income.2012)),]
+
+hist(nlsy.without.truncated$personal.total.income.2012,main="",xlab="Personal Income 2012")
+```
+
+The data also appears to be non normal.I tested this further by constructing a normal qqplot of the data.
+
+```{r ,echo=FALSE}
+
+with(nlsy.without.truncated, qqnorm(personal.total.income.2012[which(nlsy.without.truncated$sex=='Male')],main = "Normal Q-Q Plot of income (Male)"))
+
+with(nlsy.without.truncated, qqline(personal.total.income.2012[which(nlsy.without.truncated$sex=='Male')], col = "blue"))
+
+with(nlsy.without.truncated, qqnorm(personal.total.income.2012[which(nlsy.without.truncated$sex=='Female')],main = "Normal Q-Q Plot of income (Female)"))
+
+with(nlsy.without.truncated, qqline(personal.total.income.2012[which(nlsy.without.truncated$sex=='Female')], col = "blue"))
+
+```
+
+Since the data does not seem to lie on a straight line, the data is not normal.Therefore, I used a non parametric test - Mann-Whitney U test(aka Wilcoxon rank-sum test). The results of this test are discussed in the Findings section
+
+Pulled more data from NLS Investigator ?  
+I did not pull any additional data from the NLS Investigator.
+
+Plots or tables that revealed interesting trends (did not) ?
+
+#### Other relations investigated ?   
+1. Age at first marriage & Number of jobs.
+
+```{r ,echo=FALSE}
+nlsy.age.first.marriage.data <- nlsy.clean[-which(nlsy.clean$age.first.marriage  %in% c("Incorrectly Skipped","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","39","38","Never Married")),]
+
+qplot(x = age.first.marriage, y = number.jobs, geom = "boxplot",xlab="Age at first marriage",ylab="Number of Jobs", data = nlsy.age.first.marriage.data)
+
+```
+
+There does not seem to be any signficant difference in the number of jobs based on the age during his/her first marriage
+
+2. Age at first marriage & personal income
+```{r ,echo=FALSE}
+
+qplot(x = age.first.marriage, y = personal.total.income.2012, geom = "boxplot",xlab="Age at first marriage",ylab="Personal Income", data = nlsy.age.first.marriage.data)
+
+```
+
+There does not seem to be any signficant difference in personal income based on the age during his/her first marriage
+
+3. Number of jobs & personal income
+```{r ,echo=FALSE}
+nlsy.jobs.data <- nlsy.clean[-which(nlsy.clean$number.jobs  %in% c(30:58)),]
+
+qplot(x = as.factor(number.jobs), y = personal.total.income.2012, geom = "boxplot",xlab=" Number of Jobs",ylab="Personal Income", data = nlsy.jobs.data)
+```
+
+There does not seem to be any signficant difference in personal income based on number of jobs (2008).
+But this is disproved later on during linear regression.
+
+
+#### Income & gender related factors investigated ?
+Plots and summaries of all analysis related to income and gender are described in detail in the 3rd section.I tried to analyze the foll:    
+a)if income was related to college or school education, broken down by gender.  
+b)if income was related to the race of a person, broken down by gender.  
+c)if income was related to the age of a person during his first marriage, broken down by gender.  
+d)if income was related to whether a person was charged in adult court.   
+e)if income was related to the type of industry the person worked in.  
+f)if income was related to the marital status of a person.  
+
+
+###3. Findings
+To start of, I plotted personal income data based on gender.The box plot is shown below.
+
+```{r ,echo=FALSE}
+qplot(x = sex, y = nlsy.clean$personal.total.income.2012, geom = "boxplot",ylab="personal income", data = nlsy.clean)
+```
+
+The above plot seems to suggest that there is a significant difference in income between men and women 
+To test if this test is statistically significant, I performed a non parametric test (Mann-Whitney U test).
+The results of this test are discussed later on. 
+
+Below are some plots and summaries of variables that may have an impact on the income.
+
+Summary table which shows the average income among men and women.
+```{r ,echo=FALSE}
+
+#kable(with(nlsy.school.data, setNames(aggregate(personal.total.income.2012 ~ highest.grade.completed + sex, FUN=mean, data=nlsy.school.data),c("Highest Grade","Sex","Mean Income"))),format="markdown")
+setNames(aggregate(personal.total.income.2012 ~ sex, data = nlsy.clean, 
+          FUN = function(x) {c(mean = mean(x), sd = sd(x))}),c("Sex","Income"))
+```
+#### Mean Income broken down by Highest Grade Completed and Sex (2012)
+
+The below bar plot shows mean salaries among those whose highest grade completed is 'college' level
+The income of males are higher than females at all levels in college
+
+```{r ,echo=FALSE,message=FALSE,warning=FALSE}
+nlsy.college.data <- nlsy.clean[which(nlsy.clean$highest.grade.completed %in% c("1st Year Coll","2nd Year Coll","3rd Year Coll","4th Year Coll")),]
+
+ #kable(with(nlsy.college.data, setNames(aggregate(personal.total.income.2012 ~ highest.grade.completed + sex, FUN=mean, data=nlsy.college.data),c("Highest Grade","Sex","Mean Income"))),format="markdown")
+
+tab <- with(nlsy.college.data, aggregate(personal.total.income.2012, by = list(highest.grade.completed, sex), FUN = mean))
+
+
+df <- melt(tab)
+
+# Bar graph, highest grade on x-axis, income on y-axis ,color fill grouped by sex -- use position_dodge()
+gg1 <- ggplot(data=df, aes(x= Group.1, y= value, fill=Group.2)) + geom_bar(stat="identity", position=position_dodge())
+gg1 + scale_fill_discrete(name="Sex") +xlab("Highest Grade Completed (College)") + ylab("Mean Income")+scale_fill_manual(values=c("pink2", "cornflowerblue"))+guides(fill=guide_legend(title=NULL))
+
+```
+
+The below bar plot shows mean salaries among those whose highest grade completed is 'school' level.
+The mean salaries of men are higher at all levels in school. 
+
+```{r ,echo=FALSE,message=FALSE,warning=FALSE}
+nlsy.school.data <- nlsy.clean[which(nlsy.clean$highest.grade.completed %in% c("1","2","3","4","5","6","7","8","9","10","11","12")),]
+
+#kable(with(nlsy.school.data, setNames(aggregate(personal.total.income.2012 ~ highest.grade.completed + sex, FUN=mean, data=nlsy.school.data),c("Highest Grade","Sex","Mean Income"))),format="markdown")
+
+tab <- with(nlsy.school.data, aggregate(personal.total.income.2012, by = list(highest.grade.completed, sex), FUN = mean))
+
+
+df <- melt(tab)
+
+# Bar graph, highest grade on x-axis, income on y-axis ,color fill grouped by sex -- use position_dodge()
+gg2 <- ggplot(data=df, aes(x= Group.1, y= value, fill=Group.2)) + geom_bar(stat="identity", position=position_dodge())
+gg2 + scale_fill_discrete(name="Sex") +xlab("Highest Grade Completed (School)") + ylab("Mean Income")+ scale_fill_manual(values=c("pink2", "cornflowerblue"))+guides(fill=guide_legend(title=NULL))
+```
+
+#### Mean Income broken down by Race & Sex (2012) 
+The below plot shows salaries broken down by race and sex. Across race -'Black' , 'Hispanic' & 'Other'  men had significantly higher mean salaries than women.
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+
+#kable(with(nlsy.clean, setNames(aggregate(personal.total.income.2012 ~ race + sex, FUN=mean, data=nlsy.clean),c("Race","Sex","Mean Income"))),format="markdown")
+
+tab <- with(nlsy.clean, aggregate(personal.total.income.2012, by = list(race, sex), FUN = mean))
+df <- melt(tab)
+
+# Bar graph, highest grade on x-axis, income on y-axis ,color fill grouped by sex -- use position_dodge()
+gg2 <- ggplot(data=df, aes(x= Group.1, y= value, fill=Group.2)) + geom_bar(stat="identity", position=position_dodge())
+gg2 + scale_fill_discrete(name="Sex") +xlab("Race") + ylab("Mean Income")+ scale_fill_manual(values=c("pink2", "cornflowerblue"))+guides(fill=guide_legend(title=NULL))
+```
+
+
+#### Mean Income broken down by age of first marriage and gender
+Men have significantly higher salaries than women across all ages.
+```{r ,echo=FALSE,message=FALSE,warning=FALSE}
+nlsy.age.first.marriage.data <- nlsy.clean[-which(nlsy.clean$age.first.marriage  %in% c("Incorrectly Skipped","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","39","38","Never Married")),]
+
+
+tab <- with(nlsy.age.first.marriage.data, aggregate(personal.total.income.2012, by = list(age.first.marriage, sex), FUN = mean))
+
+
+df <- melt(tab)
+
+# Bar graph, highest grade on x-axis, income on y-axis ,color fill grouped by sex -- use position_dodge()
+gg2 <- ggplot(data=df, aes(x= Group.1, y= value, fill=Group.2)) + geom_bar(stat="identity", position=position_dodge())
+gg2 + scale_fill_discrete(name="Sex") +xlab("Age of first marriage") + ylab("Mean Income")+ scale_fill_manual(values=c("pink2", "cornflowerblue"))+guides(fill=guide_legend(title=NULL))
+
+```
+
+#### Summary showing difference in income based on 'charged in adult court ?'
+Below is a summary which shows the difference in income depending on whether a person was charged or not in an adult court.
+
+```{r ,echo=FALSE}
+# remove did not participate rows.
+kable(with(nlsy.clean, setNames(aggregate(personal.total.income.2012 ~ illegal.charged+ sex, FUN=mean, data=nlsy.clean),c("Charged?","Sex","Mean Income"))),format="markdown")
+```
+
+#### Business Type 
+Below is a summary of personal income based on the business type
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+
+tab <- with(nlsy.clean, aggregate(personal.total.income.2012, by = list(business.type, sex), FUN = mean))
+df <- melt(tab)
+
+# Bar graph, busines type on x-axis, income on y-axis ,color fill grouped by sex -- use position_dodge()
+gg2 <- ggplot(data=df, aes(x= Group.1, y= value, fill=Group.2)) + geom_bar(stat="identity", position=position_dodge())
+gg2 + scale_fill_discrete(name="Sex") +xlab("Business Type") + ylab("Mean Income")+ scale_fill_manual(values=c("pink2", "cornflowerblue"))+guides(fill=guide_legend(title=NULL))+
+theme(axis.text.x=element_text(angle=90,size=7, vjust=0.5,hjust = 1))
+```
+
+#### Marital Status 
+Below is a summary of personal income based on marital status.
+
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+
+tab <- with(nlsy.clean, aggregate(personal.total.income.2012, by = list(marital.status, sex), FUN = mean))
+df <- melt(tab)
+
+# Bar graph, busines type on x-axis, income on y-axis ,color fill grouped by sex -- use position_dodge()
+gg2 <- ggplot(data=df, aes(x= Group.1, y= value, fill=Group.2)) + geom_bar(stat="identity", position=position_dodge())
+gg2 + scale_fill_discrete(name="Sex") +xlab("Marital Status") + ylab("Mean Income")+ scale_fill_manual(values=c("pink2", "cornflowerblue"))+guides(fill=guide_legend(title=NULL))+
+theme(axis.text.x=element_text(angle=90,size=7, vjust=0.5,hjust = 1))
+```
+
+
+
+#### TESTS
+Since the personal income data is non normal, I used Mann-whitney test to find the statistical signifcance in the difference in income between men and women.Since the data contained censored data, I ran the test 2 ways , with and without cencosred data to check if the estimates changed a lot.
+
+#### 1.(a) Mann-Whitney U test(aka Wilcoxon rank-sum test) with censored data
+The null hypothesis is that, there is no significant difference in the mean of incomes between men and women.  The alternate hypothesis is that there is a significant difference in the mean of incomes between men and women.
+
+```{r ,echo=FALSE}
+
+birthwt.wilcox.test <- wilcox.test(personal.total.income.2012 ~ sex, data=nlsy.clean, conf.int=TRUE)
+birthwt.wilcox.test
+
+```
+#### 1. (b) Mann-Whitney U test(aka Wilcoxon rank-sum test) without censored data
+
+
+```{r ,echo=FALSE}
+nlsy.without.censored <- nlsy.clean[which(nlsy.clean$personal.total.income.2012!=max(nlsy.clean$personal.total.income.2012)),]
+nlsy.wilcox.test <- wilcox.test(personal.total.income.2012 ~ sex, data=nlsy.without.censored, conf.int=TRUE)
+nlsy.wilcox.test
+```
+
+```{r ,echo=FALSE}
+
+```
+####Results
+In wilcoxon test, the null hypothesis test is that the mean incomes of the 2 samples are from identical population.
+The p-value (< 2.2e-16)  of both the tests are very small (at 0.05 significance level). Based on this we can reject the null hypothesis.This means that there is a significant difference in the mean income of men and women. Including the censored data is not changing the estimate much.
+
+
+#### 2. Linear Regression - to investigate factors affecting the personal income
+a. Fitting a linear regression model with response variable 'personal.total.income.2012' and covariates
+
+- `race  `  
+- `sex    ` 
+- `number.spouses.2008  `                   
+- `marital.status  `             
+- `number.jobs`                                     
+- `family.total.income.2012  `    
+
+```{r ,echo=FALSE}
+
+personal.income.lm <- lm(personal.total.income.2012 ~ race + sex+number.spouses.2008+ marital.status+number.jobs+family.total.income.2012, data = nlsy.without.censored)
+summary(personal.income.lm)
+```
+####Interpretation of output & coefficients
+The linear regression model is a good model based on the overall p-value of <2.2e-16 at 0.05 significance.All the independent variables included in the regression model are signficant predictors of income of an individual.  
+
+raceHispanic  (2.794e+03 )    
+If the race is Hispanic, this can cause an increase in the mean salary by 2794$
+
+raceOther     (5.005e+03)  
+If the race is Hispanic, this can cause an increase in the mean salary by 5005$
+
+number.spouses.2008 (-9.841e+02)  
+If the number of spouses increase 1, the income decreases by -9.841e+02
+
+marital.statusNever Married (3.369e+03)  
+If you are never married, the income increases by 3369 $
+
+marital.statusOther          (8.831e+03)  
+If the marital status is 'Other' (live in ?) the income increases by 8831$
+
+number.jobs (-2.769e+02 )  
+If the number of jobs increases by 1, the income decreased by -2.769e+02 
+
+family.total.income.2012     (3.155e-01)  
+If the family income increases by a unit, the income decreased by 0.03155
+
+#### Diagnostic plots
+```{r ,echo=FALSE}
+plot(personal.income.lm)
+```
+
+#### Issues
+There may be issues in the lower tail of the Normal QQ plot.  
+The variance across the plot increases and then eventually decreases across the range.
+Looking at the Residuals vs Leverage plot, we see that point 1810,9788,1948  has both high leverage and high residual. These point may be outliers.
+
+###4. Discussion
+Conclusion  
+
+Based on the different analysis and results of statistical tests,I can conclude that there is a signficant difference in income between men and women. Males have a higher income than women.This was established by performing the Wilcoxon test.
+
+The significant predictors of income are race, gender, marital status, number of spouses, number of jobs and a person's family's income.These findings are based on linear regression results.
+
+Variables indicative of the crime profile of a person were not included in the regression model, mainly due to the large number of missing values in these fields.Adding these could have resulted in a better model.The model does not take into account economic factors (not available in the data set).If included, it can significantly impact the model.Similary other variables such as number of children were not included due to the large number of missing values.
+
+Although I am confident about the finding that men have significantly higher income than women, I have about 60% confidence in the regression model in being a good predictor of the income. Thus, the model needs to be further improved if the findings are to be reported to a policy maker and more analysis needs to be performed.
